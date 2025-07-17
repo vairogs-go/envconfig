@@ -48,11 +48,11 @@ func TestReadDotenvBytes(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := ReadDotenvBytes(tt.input)
-			if !reflect.DeepEqual(result, tt.expected) {
-				t.Errorf("ReadDotenvBytes() = %v, want %v", result, tt.expected)
+	for _, testT := range tests {
+		t.Run(testT.name, func(t *testing.T) {
+			result := ReadDotenvBytes(testT.input)
+			if !reflect.DeepEqual(result, testT.expected) {
+				t.Errorf("ReadDotenvBytes() = %v, want %v", result, testT.expected)
 			}
 		})
 	}
@@ -128,11 +128,11 @@ func TestMergeEnvMaps(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := MergeEnvMaps(tt.input...)
-			if !reflect.DeepEqual(result, tt.expected) {
-				t.Errorf("MergeEnvMaps() = %v, want %v", result, tt.expected)
+	for _, testT := range tests {
+		t.Run(testT.name, func(t *testing.T) {
+			result := MergeEnvMaps(testT.input...)
+			if !reflect.DeepEqual(result, testT.expected) {
+				t.Errorf("MergeEnvMaps() = %v, want %v", result, testT.expected)
 			}
 		})
 	}
@@ -146,26 +146,34 @@ func TestGetFieldName(t *testing.T) {
 	}{
 		{
 			name:     "field with mapstructure tag",
-			field:    reflect.StructField{Name: "TestField", Tag: `mapstructure:"custom_name"`},
+			field:    reflect.StructField{Name: "TestField", PkgPath: "", Type: reflect.TypeOf(""), Tag: `mapstructure:"custom_name"`, Offset: 0, Index: nil, Anonymous: false},
 			expected: "custom_name",
 		},
 		{
 			name:     "field without mapstructure tag",
-			field:    reflect.StructField{Name: "TestField"},
+			field:    reflect.StructField{Name: "TestField", PkgPath: "", Type: reflect.TypeOf(""), Tag: "", Offset: 0, Index: nil, Anonymous: false},
 			expected: "testfield",
 		},
 		{
 			name:     "field with empty mapstructure tag",
-			field:    reflect.StructField{Name: "TestField", Tag: `mapstructure:""`},
+			field:    reflect.StructField{Name: "TestField", PkgPath: "", Type: reflect.TypeOf(""), Tag: `mapstructure:""`, Offset: 0, Index: nil, Anonymous: false},
 			expected: "testfield",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := getFieldName(tt.field)
-			if result != tt.expected {
-				t.Errorf("getFieldName() = %v, want %v", result, tt.expected)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := getFieldName(reflect.StructField{
+				Name:      testCase.field.Name,
+				PkgPath:   testCase.field.PkgPath,
+				Type:      testCase.field.Type,
+				Tag:       testCase.field.Tag,
+				Offset:    testCase.field.Offset,
+				Index:     testCase.field.Index,
+				Anonymous: testCase.field.Anonymous,
+			})
+			if result != testCase.expected {
+				t.Errorf("getFieldName() = %v, want %v", result, testCase.expected)
 			}
 		})
 	}
@@ -198,11 +206,11 @@ func TestBuildKey(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := buildKey(tt.fieldName, tt.prefix)
-			if result != tt.expected {
-				t.Errorf("buildKey() = %v, want %v", result, tt.expected)
+	for _, testT := range tests {
+		t.Run(testT.name, func(t *testing.T) {
+			result := buildKey(testT.fieldName, testT.prefix)
+			if result != testT.expected {
+				t.Errorf("buildKey() = %v, want %v", result, testT.expected)
 			}
 		})
 	}
@@ -241,22 +249,26 @@ func TestHandleSliceField(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
 			// Create a new slice to modify
 			slicePtr := reflect.New(reflect.SliceOf(reflect.TypeOf("")))
 			sliceVal := slicePtr.Elem()
 
-			err := handleSliceField(sliceVal, tt.envValue)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("handleSliceField() error = %v, wantErr %v", err, tt.wantErr)
+			err := handleSliceField(sliceVal, testCase.envValue)
+			if (err != nil) != testCase.wantErr {
+				t.Errorf("handleSliceField() error = %v, wantErr %v", err, testCase.wantErr)
 				return
 			}
 
-			if !tt.wantErr {
-				result := sliceVal.Interface().([]string)
-				if !reflect.DeepEqual(result, tt.expected) {
-					t.Errorf("handleSliceField() = %v, want %v", result, tt.expected)
+			if !testCase.wantErr {
+				result, ok := sliceVal.Interface().([]string)
+				if !ok {
+					t.Errorf("handleSliceField() did not return a []string slice")
+					return
+				}
+				if !reflect.DeepEqual(result, testCase.expected) {
+					t.Errorf("handleSliceField() = %v, want %v", result, testCase.expected)
 				}
 			}
 		})
@@ -313,7 +325,9 @@ func TestFillStructFromEnv(t *testing.T) {
 				"name": "test_app",
 			},
 			expected: TestStruct{
-				Name: "test_app",
+				Name:     "test_app",
+				Database: NestedStruct{Host: "", Port: ""},
+				Tags:     nil,
 			},
 		},
 		{
@@ -324,11 +338,9 @@ func TestFillStructFromEnv(t *testing.T) {
 				"database.port": "5432",
 			},
 			expected: TestStruct{
-				Name: "test_app",
-				Database: NestedStruct{
-					Host: "localhost",
-					Port: "5432",
-				},
+				Name:     "test_app",
+				Database: NestedStruct{Host: "localhost", Port: "5432"},
+				Tags:     nil,
 			},
 		},
 		{
@@ -338,23 +350,24 @@ func TestFillStructFromEnv(t *testing.T) {
 				"tags": "tag1,tag2,tag3",
 			},
 			expected: TestStruct{
-				Name: "test_app",
-				Tags: []string{"tag1", "tag2", "tag3"},
+				Name:     "test_app",
+				Database: NestedStruct{Host: "", Port: ""},
+				Tags:     []string{"tag1", "tag2", "tag3"},
 			},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, testT := range tests {
+		t.Run(testT.name, func(t *testing.T) {
 			var result TestStruct
-			err := FillStructFromEnv("", reflect.ValueOf(&result).Elem(), tt.env)
+			err := FillStructFromEnv("", reflect.ValueOf(&result).Elem(), testT.env)
 			if err != nil {
 				t.Errorf("FillStructFromEnv() error = %v", err)
 				return
 			}
 
-			if !reflect.DeepEqual(result, tt.expected) {
-				t.Errorf("FillStructFromEnv() = %v, want %v", result, tt.expected)
+			if !reflect.DeepEqual(result, testT.expected) {
+				t.Errorf("FillStructFromEnv() = %v, want %v", result, testT.expected)
 			}
 		})
 	}

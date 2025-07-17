@@ -113,11 +113,17 @@ func TestStructValidator_ValidateStruct(t *testing.T) {
 				ComboField:    "combo",
 			},
 			wantError: false,
+			errorMsg:  "",
 		},
 		{
 			name: "missing required field",
 			config: &TestStruct{
+				RequiredField: "",
 				OptionalField: "optional",
+				MinField:      "",
+				MaxField:      "",
+				PatternField:  "",
+				ComboField:    "",
 			},
 			wantError: true,
 			errorMsg:  "requiredfield",
@@ -126,7 +132,11 @@ func TestStructValidator_ValidateStruct(t *testing.T) {
 			name: "field too short",
 			config: &TestStruct{
 				RequiredField: "required",
+				OptionalField: "",
 				MinField:      "ab",
+				MaxField:      "",
+				PatternField:  "",
+				ComboField:    "",
 			},
 			wantError: true,
 			errorMsg:  "minimum length",
@@ -135,7 +145,11 @@ func TestStructValidator_ValidateStruct(t *testing.T) {
 			name: "field too long",
 			config: &TestStruct{
 				RequiredField: "required",
+				OptionalField: "",
+				MinField:      "",
 				MaxField:      "this is way too long",
+				PatternField:  "",
+				ComboField:    "",
 			},
 			wantError: true,
 			errorMsg:  "maximum length",
@@ -144,7 +158,11 @@ func TestStructValidator_ValidateStruct(t *testing.T) {
 			name: "pattern mismatch",
 			config: &TestStruct{
 				RequiredField: "required",
+				OptionalField: "",
+				MinField:      "",
+				MaxField:      "",
 				PatternField:  "abc@123",
+				ComboField:    "",
 			},
 			wantError: true,
 			errorMsg:  "does not match required pattern",
@@ -153,24 +171,28 @@ func TestStructValidator_ValidateStruct(t *testing.T) {
 			name: "combo field validation",
 			config: &TestStruct{
 				RequiredField: "required",
-				ComboField:    "a", // Too short
+				OptionalField: "",
+				MinField:      "",
+				MaxField:      "",
+				PatternField:  "",
+				ComboField:    "a",
 			},
 			wantError: true,
 			errorMsg:  "minimum length",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validator.ValidateStruct(tt.config)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			err := validator.ValidateStruct(testCase.config)
 
-			if tt.wantError {
+			if testCase.wantError {
 				if err == nil {
 					t.Error("ValidateStruct() expected error but got none")
 					return
 				}
-				if tt.errorMsg != "" && !strings.Contains(err.Error(), tt.errorMsg) {
-					t.Errorf("ValidateStruct() error = %v, want to contain %v", err.Error(), tt.errorMsg)
+				if testCase.errorMsg != "" && !strings.Contains(err.Error(), testCase.errorMsg) {
+					t.Errorf("ValidateStruct() error = %v, want to contain %v", err.Error(), testCase.errorMsg)
 				}
 			} else {
 				if err != nil {
@@ -210,12 +232,14 @@ func TestStructValidator_ValidateStructWithNestedStruct(t *testing.T) {
 				},
 			},
 			wantError: false,
+			errorMsg:  "",
 		},
 		{
 			name: "missing nested required field",
 			config: TestStruct{
 				RequiredField: "required",
 				Nested: NestedStruct{
+					NestedRequired: "",
 					NestedOptional: "nested_optional",
 				},
 			},
@@ -225,8 +249,10 @@ func TestStructValidator_ValidateStructWithNestedStruct(t *testing.T) {
 		{
 			name: "missing top-level required field",
 			config: TestStruct{
+				RequiredField: "",
 				Nested: NestedStruct{
 					NestedRequired: "nested_required",
+					NestedOptional: "",
 				},
 			},
 			wantError: true,
@@ -234,17 +260,17 @@ func TestStructValidator_ValidateStructWithNestedStruct(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validator.ValidateStruct(&tt.config)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			err := validator.ValidateStruct(&testCase.config)
 
-			if tt.wantError {
+			if testCase.wantError {
 				if err == nil {
 					t.Error("ValidateStruct() expected error but got none")
 					return
 				}
-				if tt.errorMsg != "" && !strings.Contains(err.Error(), tt.errorMsg) {
-					t.Errorf("ValidateStruct() error = %v, want to contain %v", err.Error(), tt.errorMsg)
+				if testCase.errorMsg != "" && !strings.Contains(err.Error(), testCase.errorMsg) {
+					t.Errorf("ValidateStruct() error = %v, want to contain %v", err.Error(), testCase.errorMsg)
 				}
 			} else {
 				if err != nil {
@@ -282,6 +308,7 @@ func TestStructValidator_ValidateStructWithPointerField(t *testing.T) {
 				},
 			},
 			wantError: false,
+			errorMsg:  "",
 		},
 		{
 			name: "nil pointer field",
@@ -289,14 +316,15 @@ func TestStructValidator_ValidateStructWithPointerField(t *testing.T) {
 				RequiredField: "required",
 				NestedPtr:     nil,
 			},
-			wantError: false, // nil pointers are not validated
+			wantError: false,
+			errorMsg:  "",
 		},
 		{
 			name: "invalid nested field in pointer",
 			config: TestStruct{
 				RequiredField: "required",
-				NestedPtr:     &NestedStruct{
-					// Missing NestedRequired
+				NestedPtr: &NestedStruct{
+					NestedRequired: "",
 				},
 			},
 			wantError: true,
@@ -304,17 +332,17 @@ func TestStructValidator_ValidateStructWithPointerField(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validator.ValidateStruct(&tt.config)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			err := validator.ValidateStruct(&testCase.config)
 
-			if tt.wantError {
+			if testCase.wantError {
 				if err == nil {
 					t.Error("ValidateStruct() expected error but got none")
 					return
 				}
-				if tt.errorMsg != "" && !strings.Contains(err.Error(), tt.errorMsg) {
-					t.Errorf("ValidateStruct() error = %v, want to contain %v", err.Error(), tt.errorMsg)
+				if testCase.errorMsg != "" && !strings.Contains(err.Error(), testCase.errorMsg) {
+					t.Errorf("ValidateStruct() error = %v, want to contain %v", err.Error(), testCase.errorMsg)
 				}
 			} else {
 				if err != nil {
@@ -336,35 +364,35 @@ func TestStructValidator_getFieldName(t *testing.T) {
 	}{
 		{
 			name:     "field with mapstructure tag",
-			field:    reflect.StructField{Name: "TestField", Tag: `mapstructure:"custom_name"`},
+			field:    reflect.StructField{Name: "TestField", PkgPath: "", Type: reflect.TypeOf(""), Tag: `mapstructure:"custom_name"`, Offset: 0, Index: nil, Anonymous: false},
 			prefix:   "",
 			expected: "custom_name",
 		},
 		{
 			name:     "field without mapstructure tag",
-			field:    reflect.StructField{Name: "TestField"},
+			field:    reflect.StructField{Name: "TestField", PkgPath: "", Type: reflect.TypeOf(""), Tag: "", Offset: 0, Index: nil, Anonymous: false},
 			prefix:   "",
 			expected: "testfield",
 		},
 		{
 			name:     "field with prefix",
-			field:    reflect.StructField{Name: "TestField"},
+			field:    reflect.StructField{Name: "TestField", PkgPath: "", Type: reflect.TypeOf(""), Tag: "", Offset: 0, Index: nil, Anonymous: false},
 			prefix:   "parent",
 			expected: "parent.testfield",
 		},
 		{
 			name:     "field with mapstructure tag and prefix",
-			field:    reflect.StructField{Name: "TestField", Tag: `mapstructure:"custom_name"`},
+			field:    reflect.StructField{Name: "TestField", PkgPath: "", Type: reflect.TypeOf(""), Tag: `mapstructure:"custom_name"`, Offset: 0, Index: nil, Anonymous: false},
 			prefix:   "parent",
 			expected: "parent.custom_name",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := validator.getFieldName(tt.field, tt.prefix)
-			if result != tt.expected {
-				t.Errorf("getFieldName() = %v, want %v", result, tt.expected)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := validator.getFieldName(testCase.field, testCase.prefix)
+			if result != testCase.expected {
+				t.Errorf("getFieldName() = %v, want %v", result, testCase.expected)
 			}
 		})
 	}
@@ -380,26 +408,26 @@ func TestStructValidator_isRequired(t *testing.T) {
 	}{
 		{
 			name:     "required field",
-			field:    reflect.StructField{Tag: `required:"true"`},
+			field:    reflect.StructField{Name: "", PkgPath: "", Type: reflect.TypeOf(""), Tag: `required:"true"`, Offset: 0, Index: nil, Anonymous: false},
 			expected: true,
 		},
 		{
 			name:     "not required field",
-			field:    reflect.StructField{Tag: `required:"false"`},
+			field:    reflect.StructField{Name: "", PkgPath: "", Type: reflect.TypeOf(""), Tag: `required:"false"`, Offset: 0, Index: nil, Anonymous: false},
 			expected: false,
 		},
 		{
 			name:     "field without required tag",
-			field:    reflect.StructField{},
+			field:    reflect.StructField{Name: "", PkgPath: "", Type: reflect.TypeOf(""), Tag: "", Offset: 0, Index: nil, Anonymous: false},
 			expected: false,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := validator.isRequired(tt.field)
-			if result != tt.expected {
-				t.Errorf("isRequired() = %v, want %v", result, tt.expected)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := validator.isRequired(testCase.field)
+			if result != testCase.expected {
+				t.Errorf("isRequired() = %v, want %v", result, testCase.expected)
 			}
 		})
 	}
@@ -480,11 +508,11 @@ func TestStructValidator_isEmpty(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := validator.isEmpty(tt.value)
-			if result != tt.expected {
-				t.Errorf("isEmpty() = %v, want %v", result, tt.expected)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := validator.isEmpty(testCase.value)
+			if result != testCase.expected {
+				t.Errorf("isEmpty() = %v, want %v", result, testCase.expected)
 			}
 		})
 	}
@@ -531,11 +559,11 @@ func TestStructValidator_parseInt(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := validator.parseInt(tt.input, tt.defaultVal)
-			if result != tt.expected {
-				t.Errorf("parseInt() = %v, want %v", result, tt.expected)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := validator.parseInt(testCase.input, testCase.defaultVal)
+			if result != testCase.expected {
+				t.Errorf("parseInt() = %v, want %v", result, testCase.expected)
 			}
 		})
 	}
@@ -576,11 +604,11 @@ func TestStructValidator_matchesPattern(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := validator.matchesPattern(tt.input, tt.pattern)
-			if result != tt.expected {
-				t.Errorf("matchesPattern() = %v, want %v", result, tt.expected)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := validator.matchesPattern(testCase.input, testCase.pattern)
+			if result != testCase.expected {
+				t.Errorf("matchesPattern() = %v, want %v", result, testCase.expected)
 			}
 		})
 	}
@@ -636,11 +664,11 @@ func TestStructValidator_isAlphanumeric(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := validator.isAlphanumeric(tt.input)
-			if result != tt.expected {
-				t.Errorf("isAlphanumeric() = %v, want %v", result, tt.expected)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := validator.isAlphanumeric(testCase.input)
+			if result != testCase.expected {
+				t.Errorf("isAlphanumeric() = %v, want %v", result, testCase.expected)
 			}
 		})
 	}
@@ -656,8 +684,8 @@ func TestStructValidator_validateStructWithUnexportedFields(t *testing.T) {
 
 	// Only exported fields should be validated
 	config := TestStruct{
-		// Missing ExportedField (should cause error)
-		unexportedField: "", // This should be ignored
+		ExportedField:   "",
+		unexportedField: "",
 	}
 
 	err := validator.ValidateStruct(&config)
