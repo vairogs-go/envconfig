@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2025-07-17
+
 ### Added
 - Initial release of envconfig package
 - Environment variable parsing from .env files with `ReadDotenvBytes()`
